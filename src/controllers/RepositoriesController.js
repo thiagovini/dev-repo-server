@@ -5,13 +5,21 @@ class RepositoriesController {
   async index(req, res) {
     try {
       const { user_id } = req.params;
+      const { q } = req.query;
       const user = await User.findById(user_id);
       if (!user) {
         return res.status(404).json({ message: "User Not Found." });
       }
 
+      let query = {};
+
+      if (q) {
+        query = { url: { $regex: q }}
+      }
+
       const repositories = await Repository.find({
         userId: user_id,
+        ...query
       });
 
       res.json(repositories);
@@ -31,10 +39,10 @@ class RepositoriesController {
       }
       const repository = await Repository.findOne({
         userId: user_id,
-        name,
+        url,
       });
       if (repository) {
-        res.status(422).json({ message: `Repository ${name} already exists` });
+        return res.status(422).json({ message: `Repository ${name} already exists` });
       }
       const newRepository = await Repository.create({
         name: name,
@@ -55,15 +63,13 @@ class RepositoriesController {
       if (!user) {
         return res.status(404).json({ message: " User Not Found." });
       }
-      const repository = await Repository.findOne({
-        userId: user_id,
-        id: id,
-      });
-      if (!repository) {
+      const repository = await Repository.findById(id);
+      if (!repository || (repository.userId != user_id)) {
         return res.status(404).json({ message: " Repository Not Found." });
       }
-      Repository.deleteOne(repository);
-      return res.status(200).json({ id: id });
+      console.log(`repositorio depois da verificacao ${repository.name}`);
+      await Repository.deleteOne(repository);
+      return res.status(200).json({ message: `repository deleted: id` });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Internal Server Error." });
